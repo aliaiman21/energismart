@@ -167,16 +167,13 @@ div[data-testid="stVerticalBlockBorderWrapper"]:hover {
 """, unsafe_allow_html=True)
 
 # =================================================================
-# NAV (always shown)
+# NAV (always shown) — dead links and flag emoji removed
 # =================================================================
 st.markdown("""
 <div class="navbar">
     <div class="brand">⚡ Energi<span>Smart</span></div>
     <div class="links">
-        <a href="#">Energy Advisor</a>
-        <a href="#">How It Works</a>
-        <a href="#">About</a>
-        <span class="flag">🇲🇾 Malaysia</span>
+        <span class="flag">Malaysia</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -245,6 +242,9 @@ elif st.session_state.page == "household":
             st.rerun()
     with c2:
         if st.button("Continue to Appliances →", type="primary", use_container_width=True):
+            # Save a stable copy of occupants at the moment of leaving this page.
+            # (Fix for a Streamlit session-state quirk where the raw widget value
+            # could revert to its default by the time the Results page loads.)
             st.session_state.occupants_saved = st.session_state.get("occupants", 4)
             go_to("appliances")
             st.rerun()
@@ -362,6 +362,8 @@ elif st.session_state.page == "results":
     progress_steps(3)
 
     appliance_inputs = get_appliance_inputs()
+    # Read the STABLE saved copy first (see the "Continue to Appliances" button
+    # above); fall back to the raw widget key, then to a hard default of 4.
     occupants = st.session_state.get("occupants_saved", st.session_state.get("occupants", 4))
 
     if not appliance_inputs:
@@ -417,15 +419,18 @@ elif st.session_state.page == "results":
     with chart_c1:
         names = [f'{APPLIANCE_META[r["name"]]["icon"]} {r["name"]}' for r in breakdown]
         kwhs = [r["kwh"] for r in breakdown]
+        max_kwh = max(kwhs) if kwhs else 1
         fig_bar = go.Figure(go.Bar(
             x=kwhs, y=names, orientation="h",
             marker_color="#2d6a4f",
             text=[f"{v:.0f} kWh" for v in kwhs], textposition="outside",
+            cliponaxis=False,
         ))
         fig_bar.update_layout(
             height=max(260, 46 * len(names)),
-            margin=dict(l=10, r=30, t=10, b=10),
-            xaxis_title="kWh / month", yaxis=dict(autorange="reversed"),
+            margin=dict(l=10, r=70, t=10, b=10),
+            xaxis=dict(title="kWh / month", range=[0, max_kwh * 1.25]),
+            yaxis=dict(autorange="reversed"),
             plot_bgcolor="white", paper_bgcolor="white",
             font=dict(family="Poppins, sans-serif", size=12, color="#1b4332"),
         )
@@ -465,7 +470,7 @@ elif st.session_state.page == "results":
     </div>
     """, unsafe_allow_html=True)
 
-        # ---------- 5. Smart recommendations ----------
+    # ---------- 5. Smart recommendations (AI-powered, Phase 2) ----------
     st.markdown("#### Smart Energy Recommendations")
 
     with st.spinner("Generating personalised recommendations..."):
