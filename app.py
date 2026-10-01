@@ -524,10 +524,13 @@ elif st.session_state.page == "results":
         with st.expander("How is this score calculated?"):
             st.write(
                 f"This is an **estimated, transparency-first score** - not a scientific or "
-                f"official rating. It compares your usage per occupant "
-                f"({score['usage_per_person']} kWh/person/month) against a reference "
-                f"benchmark of {score['benchmark']} kWh/person/month. Usage at or below "
-                f"the benchmark scores 100; usage at double the benchmark scores 0."
+                f"official rating. It compares your household's total monthly usage "
+                f"({score['total_kwh']} kWh) against reference points drawn from Malaysian "
+                f"national consumption data: approximately 50% of Malaysian households use "
+                f"under {score['benchmarks']['low']} kWh/month, and approximately 75% use "
+                f"under {score['benchmarks']['mid']} kWh/month. Usage above "
+                f"{score['benchmarks']['high']} kWh/month — TNB's own domestic tariff "
+                f"threshold — scores in the lowest band."
             )
 
     # ---------- 7. TNB bill breakdown ----------
