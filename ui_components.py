@@ -193,43 +193,79 @@ def generate_recommendations(breakdown, total_kwh, calculate_tnb_cost):
     return recs[:3]
 
 
-def efficiency_score(total_kwh, occupants, benchmark_kwh_per_person=200):
+def efficiency_score(total_kwh, occupants=None,
+                      low_benchmark_kwh=200, mid_benchmark_kwh=300, high_benchmark_kwh=600):
     """
     A SIMPLE, TRANSPARENT, clearly-estimated efficiency score - not a
-    scientific or official rating. Formula (disclosed in the UI):
+    scientific or official rating. Benchmarked at the HOUSEHOLD level
+    (not per-person) against real Malaysian consumption data:
 
-        usage_per_person = total_kwh / occupants
-        ratio            = usage_per_person / benchmark_kwh_per_person
-        score             = 100 - (ratio - 1) * 100, clamped to [0, 100]
+      - 200 kWh/month: ~50% of Malaysian domestic consumers use less than this
+        (AWER / KeTTHA data, cited in Mohd Tahir et al., MATEC Web of
+        Conferences, ENCON 2017).
+      - 300 kWh/month: ~75% of Malaysian domestic consumers use at or below
+        this (same source).
+      - 600 kWh/month: TNB's own domestic tariff threshold - the point above
+        which the RM10/month retail charge applies (TNB Domestic Tariff
+        Schedule, effective 1 July 2025) - already used elsewhere in this app.
 
-    i.e. usage exactly at the benchmark -> 100; double the benchmark -> 0.
+    Score is a piecewise-linear interpolation across these three real
+    reference points, not a single arbitrary cutoff:
+        0 kWh   -> 100
+        200 kWh -> 80   (Excellent / Good boundary)
+        300 kWh -> 60   (Good / Fair boundary)
+        600 kWh -> 40   (Fair / Needs Improvement boundary)
+        900 kWh -> 0    (floor)
     """
-    if occupants <= 0:
+    if occupants is not None and occupants <= 0:
         occupants = 1
-    usage_per_person = total_kwh / occupants
-    ratio = usage_per_person / benchmark_kwh_per_person
-    raw_score = 100 - (ratio - 1) * 100
+    usage_per_person = round(total_kwh / occupants, 1) if occupants else None
+
+    anchors = [
+        (0, 100),
+        (low_benchmark_kwh, 80),
+        (mid_benchmark_kwh, 60),
+        (high_benchmark_kwh, 40),
+        (high_benchmark_kwh * 1.5, 0),  # 900 kWh floor
+    ]
+
+    if total_kwh <= anchors[0][0]:
+        raw_score = anchors[0][1]
+    elif total_kwh >= anchors[-1][0]:
+        raw_score = anchors[-1][1]
+    else:
+        for (x0, y0), (x1, y1) in zip(anchors, anchors[1:]):
+            if x0 <= total_kwh <= x1:
+                t = (total_kwh - x0) / (x1 - x0)
+                raw_score = y0 + t * (y1 - y0)
+                break
+
     score = max(0, min(100, round(raw_score)))
 
     if score >= 80:
         band = "Excellent"
-        message = "Your household's usage is efficient relative to our reference benchmark."
+        message = "Your household's monthly usage is in the lower half of Malaysian domestic consumers."
     elif score >= 60:
         band = "Good"
-        message = "Good — there is still room to reduce your energy consumption."
+        message = "Good — your usage is within the typical range, with some room to improve."
     elif score >= 40:
         band = "Fair"
-        message = "Fair — a few targeted changes could meaningfully lower your usage."
+        message = "Fair — your usage is in the higher range for Malaysian households; a few targeted changes could help."
     else:
         band = "Needs Improvement"
-        message = "Your usage is well above the reference benchmark — see the recommendations below."
+        message = "Your usage is well above typical Malaysian household levels — see the recommendations below."
 
     return {
         "score": score,
         "band": band,
         "message": message,
-        "usage_per_person": round(usage_per_person, 1),
-        "benchmark": benchmark_kwh_per_person,
+        "total_kwh": round(total_kwh, 1),
+        "usage_per_person": usage_per_person,
+        "benchmarks": {
+            "low": low_benchmark_kwh,
+            "mid": mid_benchmark_kwh,
+            "high": high_benchmark_kwh,
+        },
     }
 
 
