@@ -111,13 +111,15 @@ TIPS = {
 
 def sorted_appliance_breakdown(appliance_inputs, calculate_kwh):
     """
-    Returns a list of dicts: [{name, watts, hours, kwh}, ...] sorted by kWh
-    descending. Uses the existing calculate_kwh() - no numbers invented here.
+    appliance_inputs: dict of name -> (watts_per_unit, hours, quantity)
+    Returns a list of dicts: [{name, watts, hours, quantity, kwh}, ...] sorted
+    by kWh descending. Uses the existing calculate_kwh() - no numbers invented here.
     """
     rows = []
-    for name, (watts, hours) in appliance_inputs.items():
-        kwh = calculate_kwh(watts, hours)
-        rows.append({"name": name, "watts": watts, "hours": hours, "kwh": kwh})
+    for name, (watts, hours, quantity) in appliance_inputs.items():
+        kwh = calculate_kwh(watts, hours) * quantity
+        rows.append({"name": name, "watts": watts, "hours": hours,
+                      "quantity": quantity, "kwh": kwh})
     rows.sort(key=lambda r: r["kwh"], reverse=True)
     return rows
 
@@ -125,9 +127,9 @@ def sorted_appliance_breakdown(appliance_inputs, calculate_kwh):
 def top_driver_impact(breakdown, total_kwh, calculate_tnb_cost, reduce_hours=2):
     """
     For the #1 appliance by kWh, calculate the ACTUAL RM impact of reducing
-    its daily usage by `reduce_hours` hours/day, using the real
-    calculate_tnb_cost() function (never a fabricated figure).
-    Returns None if there isn't a meaningful reduction to show.
+    its daily usage by `reduce_hours` hours/day, across ALL units of that
+    appliance, using the real calculate_tnb_cost() function (never a
+    fabricated figure). Returns None if there isn't a meaningful reduction.
     """
     if not breakdown:
         return None
@@ -140,7 +142,7 @@ def top_driver_impact(breakdown, total_kwh, calculate_tnb_cost, reduce_hours=2):
     if actual_reduction_hours <= 0:
         return None
 
-    reduced_kwh_for_appliance = (top["watts"] / 1000) * new_hours * 30
+    reduced_kwh_for_appliance = (top["watts"] / 1000) * new_hours * 30 * top["quantity"]
     kwh_saved = round(top["kwh"] - reduced_kwh_for_appliance, 2)
     new_total_kwh = max(0, total_kwh - kwh_saved)
 
@@ -281,8 +283,9 @@ def build_csv_report(household, breakdown, cost, co2, score):
     pd.DataFrame([household]).to_csv(buf, index=False)
 
     buf.write("\nPer-Appliance Breakdown\n")
-    pd.DataFrame(breakdown)[["name", "watts", "hours", "kwh"]].rename(
-        columns={"name": "Appliance", "watts": "Watts", "hours": "Hours/day", "kwh": "kWh/month"}
+    pd.DataFrame(breakdown)[["name", "watts", "hours", "quantity", "kwh"]].rename(
+        columns={"name": "Appliance", "watts": "Watts", "hours": "Hours/day",
+                 "quantity": "Units", "kwh": "kWh/month"}
     ).to_csv(buf, index=False)
 
     buf.write("\nTNB Bill Breakdown (RM)\n")

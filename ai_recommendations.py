@@ -37,7 +37,8 @@ def _build_prompt(breakdown, total_kwh, cost, co2, occupants):
     """
     top3 = breakdown[:3]
     appliance_lines = "\n".join(
-        f"- {a['name']}: {a['kwh']} kWh/month ({a['hours']} hrs/day at {a['watts']}W)"
+        f"- {a['name']} ({a['quantity']}x unit{'s' if a['quantity'] != 1 else ''}): "
+        f"{a['kwh']} kWh/month total ({a['hours']} hrs/day at {a['watts']}W per unit)"
         for a in top3
     )
 
@@ -51,7 +52,9 @@ Total monthly usage: {total_kwh} kWh
 Total monthly bill: RM {cost['total_cost_rm']}
 CO2 emitted: {co2} kg/month
 
-Top energy-consuming appliances:
+Top energy-consuming appliances (quantity shown is how many units of that
+appliance the household has - factor this into your advice, e.g. "across
+your 2 fans" rather than assuming a single unit):
 {appliance_lines}
 
 Based ONLY on this data, generate exactly 3 personalised energy-saving
@@ -63,9 +66,9 @@ kWh figures, and critically, NO CO2 figures for individual appliances
 (only the household's TOTAL CO2 figure above was calculated - no
 per-appliance CO2 breakdown exists, so never state or imply one). Only
 reference the exact numbers already given above (household total kWh,
-RM, CO2, and each appliance's own kWh/watts/hours as listed). Give
-practical, specific, qualitative advice instead (what to do and why it
-matters), without quantifying the outcome yourself.
+RM, CO2, and each appliance's own kWh/watts/hours/quantity as listed).
+Give practical, specific, qualitative advice instead (what to do and why
+it matters), without quantifying the outcome yourself.
 
 STRICT RULE 2 (no spending advice): This app helps Malaysian households
 REDUCE their electricity bill. Never recommend buying, replacing, or
@@ -77,8 +80,8 @@ immediately: changing usage habits (e.g. hours, timing, temperature
 settings), basic maintenance (e.g. cleaning coils/filters, checking door
 seals), or behavioural changes (e.g. air-drying instead of using a
 dryer). If an appliance is the top energy consumer purely because of how
-often or how long it is used, focus the advice on usage, not the
-appliance itself.
+often, how long, or how many units are used, focus the advice on usage,
+not the appliance itself.
 
 For each recommendation, respond ONLY with a JSON array in this exact
 format, with nothing else before or after it (no markdown fences, no

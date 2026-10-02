@@ -261,18 +261,22 @@ def get_appliance_inputs():
             if name == "Air Conditioner":
                 hp = st.session_state.get("ac_hp", 1.0)
                 hours = st.session_state.get("ac_hours", 8)
+                quantity = st.session_state.get("ac_qty", 1)
                 watts = AC_HP_TO_WATT[hp]
             elif name == "Lighting":
                 bulbs = st.session_state.get("light_bulbs", 6)
                 hours = st.session_state.get("light_hours", 6)
-                watts = APPLIANCE_WATTAGE["Lighting"] * bulbs
+                quantity = bulbs
+                watts = APPLIANCE_WATTAGE["Lighting"]  # per-bulb wattage
             elif name == "Refrigerator":
                 hours = 24
+                quantity = st.session_state.get("Refrigerator_qty", 1)
                 watts = APPLIANCE_WATTAGE["Refrigerator"]
             else:
                 hours = st.session_state.get(f"{name}_hours", 2)
+                quantity = st.session_state.get(f"{name}_qty", 1)
                 watts = APPLIANCE_WATTAGE[name]
-            inputs[name] = (watts, hours)
+            inputs[name] = (watts, hours, quantity)
     return inputs
 
 
@@ -287,26 +291,31 @@ def render_appliance_card(name):
 
         if selected:
             if name == "Air Conditioner":
-                c1, c2 = st.columns(2)
+                c1, c2, c3 = st.columns(3)
                 with c1:
+                    st.number_input("How many units?", min_value=1, max_value=10, value=1, key="ac_qty")
+                with c2:
                     st.selectbox("Capacity", list(AC_HP_TO_WATT.keys()), key="ac_hp",
                                  format_func=lambda x: f"{x} HP")
-                with c2:
-                    st.slider("Daily usage (hrs)", 0, 24, 8, key="ac_hours")
+                with c3:
+                    st.number_input("Daily usage (hrs/unit)", min_value=0, max_value=24, value=8, key="ac_hours")
             elif name == "Lighting":
                 c1, c2 = st.columns(2)
                 with c1:
                     st.number_input("Number of bulbs", min_value=1, max_value=50, value=6, key="light_bulbs")
                 with c2:
-                    st.slider("Daily usage (hrs)", 0, 24, 6, key="light_hours")
+                    st.number_input("Daily usage (hrs/bulb)", min_value=0, max_value=24, value=6, key="light_hours")
             elif name == "Refrigerator":
+                st.number_input("How many units?", min_value=1, max_value=10, value=1, key="Refrigerator_qty")
                 st.caption("Runs continuously: 24 hrs/day (fixed)")
             else:
-                default_hours = 2
-                st.slider("Daily usage (hrs)", 0, 24, default_hours, key=f"{name}_hours")
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.number_input("How many units?", min_value=1, max_value=10, value=1, key=f"{name}_qty")
+                with c2:
+                    st.number_input("Daily usage (hrs/unit)", min_value=0, max_value=24, value=2, key=f"{name}_hours")
 
-
-# =================================================================
+# ==================================================
 # PAGE: APPLIANCES (step 2)
 # =================================================================
 if st.session_state.page == "appliances":
@@ -324,7 +333,7 @@ if st.session_state.page == "appliances":
     # ---- live summary panel ----
     inputs_now = get_appliance_inputs()
     n_selected = len(inputs_now)
-    daily_kwh = sum((w / 1000) * h for w, h in inputs_now.values())
+    daily_kwh = sum((w / 1000) * h * q for w, h, q in inputs_now.values())
     monthly_kwh = daily_kwh * 30
 
     st.markdown(f"""
@@ -352,6 +361,7 @@ if st.session_state.page == "appliances":
             </div>
             """, unsafe_allow_html=True)
         else:
+            st.session_state.appliance_inputs_saved = inputs_now
             go_to("results")
             st.rerun()
 
@@ -361,7 +371,7 @@ if st.session_state.page == "appliances":
 elif st.session_state.page == "results":
     progress_steps(3)
 
-    appliance_inputs = get_appliance_inputs()
+    appliance_inputs = st.session_state.get("appliance_inputs_saved", {})
     # Read the STABLE saved copy first (see the "Continue to Appliances" button
     # above); fall back to the raw widget key, then to a hard default of 4.
     occupants = st.session_state.get("occupants_saved", st.session_state.get("occupants", 4))
