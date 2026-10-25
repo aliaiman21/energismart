@@ -18,8 +18,63 @@ st.set_page_config(page_title="EnergiSmart | Energy Advisor", page_icon="⚡", l
 if "page" not in st.session_state:
     st.session_state.page = "landing"  # landing -> household -> appliances -> results
 
+# ---- Persistent input store -------------------------------------------------
+# Streamlit deletes a widget's value from session_state when that widget is not
+# drawn on the current page (e.g. going 01 Household -> 02 Appliances).  To keep
+# the user's inputs, every widget key is mirrored into a separate dict
+# (INPUT_STORE) that Streamlit does not touch, and restored before the widgets
+# are drawn on the next page.
+from ui_components import APPLIANCE_ORDER as _ORDER
+
+WIDGET_DEFAULTS = {
+    "occupants": 4, "home_type": "Terrace House", "avg_bill": 180.0,
+    "ac_qty": 1, "ac_hp": 1.0, "ac_hours": 8,
+    "light_bulbs": 6, "light_hours": 6, "Refrigerator_qty": 1,
+}
+for _n in _ORDER:
+    WIDGET_DEFAULTS[f"sel_{_n}"] = False
+    if _n not in ("Air Conditioner", "Lighting", "Refrigerator"):
+        WIDGET_DEFAULTS[f"{_n}_qty"] = 1
+        WIDGET_DEFAULTS[f"{_n}_hours"] = 2
+
+if "input_store" not in st.session_state:
+    st.session_state.input_store = dict(WIDGET_DEFAULTS)
+
+
+HOUSEHOLD_KEYS = ("occupants", "home_type", "avg_bill")
+
+
+def save_inputs():
+    """Copy the widget values of the page being left into the persistent store.
+    Only the keys that page actually draws are saved, so stale values left over
+    from other pages can never overwrite the store."""
+    page = st.session_state.get("page")
+    if page == "household":
+        keys = HOUSEHOLD_KEYS
+    elif page == "appliances":
+        keys = [k for k in WIDGET_DEFAULTS if k not in HOUSEHOLD_KEYS]
+    else:
+        keys = ()
+    for k in keys:
+        if k in st.session_state:
+            st.session_state.input_store[k] = st.session_state[k]
+
+
+def restore_inputs():
+    """When the visible page has just changed, push the stored values back into
+    the widget keys before the widgets are drawn."""
+    if st.session_state.get("_last_page") != st.session_state.page:
+        for k, v in st.session_state.input_store.items():
+            st.session_state[k] = v
+        st.session_state["_last_page"] = st.session_state.page
+
+
 def go_to(page):
+    save_inputs()          # must run while the current page's widgets still exist
     st.session_state.page = page
+
+
+restore_inputs()
 
 # =================================================================
 # DESIGN SYSTEM (CSS)
@@ -223,7 +278,7 @@ elif st.session_state.page == "household":
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("**👨‍👩‍👧‍👦 Household Size**")
-            st.number_input("Number of occupants", min_value=1, max_value=20, value=4, key="occupants", label_visibility="collapsed")
+            st.number_input("Number of occupants", min_value=1, max_value=20, key="occupants", label_visibility="collapsed")
         with c2:
             st.markdown("**🏠 Home Type**")
             st.selectbox("Home type", ["Terrace House", "Apartment/Condo", "Semi-Detached", "Bungalow"],
@@ -231,7 +286,7 @@ elif st.session_state.page == "household":
 
         st.markdown("**💳 Current Monthly Bill (RM)**")
         st.caption("Approximate — this is for comparison only and does not affect the calculation.")
-        st.number_input("Average monthly TNB bill (RM)", min_value=0.0, value=180.0, step=10.0,
+        st.number_input("Average monthly TNB bill (RM)", min_value=0.0, step=10.0,
                          key="avg_bill", label_visibility="collapsed")
 
     st.write("")
@@ -293,27 +348,27 @@ def render_appliance_card(name):
             if name == "Air Conditioner":
                 c1, c2, c3 = st.columns(3)
                 with c1:
-                    st.number_input("How many units?", min_value=1, max_value=10, value=1, key="ac_qty")
+                    st.number_input("How many units?", min_value=1, max_value=10, key="ac_qty")
                 with c2:
                     st.selectbox("Capacity", list(AC_HP_TO_WATT.keys()), key="ac_hp",
                                  format_func=lambda x: f"{x} HP")
                 with c3:
-                    st.number_input("Daily usage (hrs/unit)", min_value=0, max_value=24, value=8, key="ac_hours")
+                    st.number_input("Daily usage (hrs/unit)", min_value=0, max_value=24, key="ac_hours")
             elif name == "Lighting":
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.number_input("Number of bulbs", min_value=1, max_value=50, value=6, key="light_bulbs")
+                    st.number_input("Number of bulbs", min_value=1, max_value=50, key="light_bulbs")
                 with c2:
-                    st.number_input("Daily usage (hrs/bulb)", min_value=0, max_value=24, value=6, key="light_hours")
+                    st.number_input("Daily usage (hrs/bulb)", min_value=0, max_value=24, key="light_hours")
             elif name == "Refrigerator":
-                st.number_input("How many units?", min_value=1, max_value=10, value=1, key="Refrigerator_qty")
+                st.number_input("How many units?", min_value=1, max_value=10, key="Refrigerator_qty")
                 st.caption("Runs continuously: 24 hrs/day (fixed)")
             else:
                 c1, c2 = st.columns(2)
                 with c1:
-                    st.number_input("How many units?", min_value=1, max_value=10, value=1, key=f"{name}_qty")
+                    st.number_input("How many units?", min_value=1, max_value=10, key=f"{name}_qty")
                 with c2:
-                    st.number_input("Daily usage (hrs/unit)", min_value=0, max_value=24, value=2, key=f"{name}_hours")
+                    st.number_input("Daily usage (hrs/unit)", min_value=0, max_value=24, key=f"{name}_hours")
 
 # ==================================================
 # PAGE: APPLIANCES (step 2)
@@ -374,7 +429,7 @@ elif st.session_state.page == "results":
     appliance_inputs = st.session_state.get("appliance_inputs_saved", {})
     # Read the STABLE saved copy first (see the "Continue to Appliances" button
     # above); fall back to the raw widget key, then to a hard default of 4.
-    occupants = st.session_state.get("occupants_saved", st.session_state.get("occupants", 4))
+    occupants = st.session_state.get("occupants_saved", st.session_state.input_store.get("occupants", 4))
 
     if not appliance_inputs:
         st.markdown("""
@@ -578,8 +633,8 @@ elif st.session_state.page == "results":
     # ---------- 10. Download ----------
     household = {
         "Occupants": occupants,
-        "Home Type": st.session_state.get("home_type", ""),
-        "Reported Avg. Monthly Bill (RM)": st.session_state.get("avg_bill", 0),
+        "Home Type": st.session_state.input_store.get("home_type", ""),
+        "Reported Avg. Monthly Bill (RM)": st.session_state.input_store.get("avg_bill", 0),
     }
     csv_bytes = build_csv_report(household, breakdown, cost, co2, score)
     st.download_button(

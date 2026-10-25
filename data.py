@@ -3,7 +3,8 @@ EnergiSmart - Reference Data
 All the numbers here come from official Malaysian sources:
 - TNB tariff rates (effective 1 July 2025): mytnb.com.my/tariff
 - Appliance wattages: TNB Home Energy Calculator, hec.tnb.com.my
-- CO2 grid emission factor: Suruhanjaya Tenaga (Energy Commission Malaysia), 2024, Peninsular Malaysia
+- CO2 grid emission factor: Suruhanjaya Tenaga (Energy Commission Malaysia), 2022-2024 (provisional),
+  Peninsular Malaysia, published via Malaysia Energy Information Hub (MEIH)
 This file has NO logic in it - just numbers, stored so the rest of the app can use them.
 """
 
@@ -82,8 +83,9 @@ AC_HP_TO_WATT = {
 
 # ---------------------------------------------------------
 # 5. CO2 EMISSIONS FACTOR
-# Source: Suruhanjaya Tenaga (Energy Commission Malaysia), 2024
-# Grid Emission Factor for Peninsular Malaysia
+# Source: Suruhanjaya Tenaga (Energy Commission Malaysia), 2022-2024 (provisional)
+# Grid Emission Factor for Peninsular Malaysia, published via Malaysia Energy
+# Information Hub (MEIH)
 # ---------------------------------------------------------
 
 CO2_EMISSION_FACTOR_KG_PER_KWH = 0.740  # kg CO2 released per kWh of electricity used
