@@ -203,13 +203,14 @@ def efficiency_score(total_kwh, occupants=None,
     (not per-person) against real Malaysian consumption data:
 
       - 200 kWh/month: ~50% of Malaysian domestic consumers use less than this
-        (AWER / KeTTHA data, cited in Mohd Tahir et al., MATEC Web of
-        Conferences, ENCON 2017).
+        (AWER / KeTTHA data, cited in Rahman et al., MATEC Web of
+        Conferences, 87, 02003, 2017).
       - 300 kWh/month: ~75% of Malaysian domestic consumers use at or below
         this (same source).
       - 600 kWh/month: TNB's own domestic tariff threshold - the point above
-        which the RM10/month retail charge applies (TNB Domestic Tariff
-        Schedule, effective 1 July 2025) - already used elsewhere in this app.
+        which the RM10/month retail charge applies (Suruhanjaya Tenaga,
+        2025, tariff schedule effective 1 July 2025) - already used elsewhere
+        in this app.
 
     Score is a piecewise-linear interpolation across these three real
     reference points, not a single arbitrary cutoff:

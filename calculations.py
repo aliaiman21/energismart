@@ -19,10 +19,14 @@ def calculate_kwh(wattage_watts, hours_per_day, days=30):
 def get_rebate_rate(total_kwh):
     """
     Look up the rebate rate (RM per kWh) for a given monthly usage.
+    Usage is rounded to a whole kWh first, because TNB bills in whole units
+    and the tier table is defined in whole-kWh ranges (so a value such as
+    450.4 kWh does not fall between two tiers).
     Returns 0 if usage is above 1000 kWh (no rebate).
     """
+    billed_kwh = max(1, round(total_kwh))
     for min_kwh, max_kwh, rebate_rm_per_kwh in REBATE_TIERS:
-        if min_kwh <= total_kwh <= max_kwh:
+        if min_kwh <= billed_kwh <= max_kwh:
             return rebate_rm_per_kwh
     return 0.0  # above 1000 kWh = no rebate
 

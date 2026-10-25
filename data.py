@@ -1,8 +1,9 @@
 """
 EnergiSmart - Reference Data
 All the numbers here come from official Malaysian sources:
-- TNB tariff rates (effective 1 July 2025): mytnb.com.my/tariff
-- Appliance wattages: TNB Home Energy Calculator, hec.tnb.com.my
+- TNB tariff rates (effective 1 July 2025): Suruhanjaya Tenaga (Energy Commission Malaysia), 2025,
+  Electricity tariff schedule in Peninsular Malaysia (1 July 2025 to 31 December 2027), published via MEIH
+- Appliance wattages: TNB Home Energy Calculator (2017), hec.tnb.com.my
 - CO2 grid emission factor: Suruhanjaya Tenaga (Energy Commission Malaysia), 2022-2024 (provisional),
   Peninsular Malaysia, published via Malaysia Energy Information Hub (MEIH)
 This file has NO logic in it - just numbers, stored so the rest of the app can use them.
